@@ -7,7 +7,6 @@ from queue import Empty, Queue
 from threading import Event, Lock
 from typing import Any, Optional
 
-from openai import AsyncOpenAI
 
 
 @dataclass
@@ -80,16 +79,39 @@ class ListenAndPlayRealtimeArguments:
             "help": "If set, pause microphone capture while speaker audio is playing. Disabled by default so barge-in works."
         },
     )
+    dry_run: bool = field(
+        default=False,
+        metadata={"help": "Print the resolved connection plan without connecting or opening audio devices."},
+    )
 
 
-def _make_client(args: ListenAndPlayRealtimeArguments) -> AsyncOpenAI:
-    base_url = args.base_url or f"http://{args.host}:{args.port}/v1"
-    websocket_base_url = args.websocket_base_url or f"ws://{args.host}:{args.port}/v1"
+def _connection_urls(args: ListenAndPlayRealtimeArguments) -> tuple[str, str]:
+    return (
+        args.base_url or f"http://{args.host}:{args.port}/v1",
+        args.websocket_base_url or f"ws://{args.host}:{args.port}/v1",
+    )
+
+
+def _make_client(args: ListenAndPlayRealtimeArguments) -> Any:
+    from openai import AsyncOpenAI
+
+    base_url, websocket_base_url = _connection_urls(args)
     return AsyncOpenAI(
         api_key=args.api_key,
         base_url=base_url,
         websocket_base_url=websocket_base_url,
     )
+
+
+def _print_dry_run(args: ListenAndPlayRealtimeArguments) -> None:
+    base_url, websocket_base_url = _connection_urls(args)
+    print("Dry run: websocket connection plan")
+    print(f"  Host: {args.host}")
+    print(f"  Port: {args.port}")
+    print(f"  HTTP base URL: {base_url}")
+    print(f"  WebSocket base URL: {websocket_base_url}")
+    print(f"  Model: {args.model}")
+    print(f"  Audio: input {args.send_rate} Hz, output {args.recv_rate} Hz")
 
 
 def _build_session_update(args: ListenAndPlayRealtimeArguments) -> dict:
@@ -357,6 +379,12 @@ def main() -> None:
         action="store_true",
         default=defaults.block_mic_during_playback,
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=defaults.dry_run,
+        help="Print the resolved connection plan and exit without connecting or opening audio devices.",
+    )
     namespace = parser.parse_args()
     args = ListenAndPlayRealtimeArguments(
         host=namespace.host,
@@ -374,7 +402,11 @@ def main() -> None:
         voice=namespace.voice,
         print_json=namespace.print_json,
         block_mic_during_playback=namespace.block_mic_during_playback,
+        dry_run=namespace.dry_run,
     )
+    if args.dry_run:
+        _print_dry_run(args)
+        return
     try:
         asyncio.run(listen_and_play_realtime(args))
     except KeyboardInterrupt:
