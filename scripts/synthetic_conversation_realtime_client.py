@@ -55,11 +55,6 @@ import time
 import wave
 from pathlib import Path
 
-import httpx
-import numpy as np
-import soundfile as sf
-import websockets
-from scipy.signal import resample_poly
 
 logger = logging.getLogger("synthetic_client")
 
@@ -163,6 +158,9 @@ def synthesize_with_say(text: str, out_path: Path) -> None:
 
 def load_pcm16_mono_16k(path: Path) -> bytes:
     """Load any WAV / AIFF and return 16kHz mono PCM16 little-endian bytes."""
+    import numpy as np
+    import soundfile as sf
+    from scipy.signal import resample_poly
     data, src_rate = sf.read(str(path), always_2d=True)
     mono = data.mean(axis=1) if data.shape[1] > 1 else data[:, 0]
     if src_rate != SAMPLE_RATE_HZ:
@@ -259,7 +257,7 @@ def _truncate_transcript(s: str, max_len: int = 20) -> str:
 async def _lb_allocate_session(
     lb_url: str,
     auth_headers: dict[str, str],
-    http: httpx.AsyncClient,
+    http,
 ) -> dict:
     """POST {lb_url}/session → returns dict with connect_url, session_id, session_token."""
     resp = await http.post(f"{lb_url}/session", headers=auth_headers, timeout=30.0)
@@ -272,7 +270,7 @@ async def _lb_send_event(
     session_id: str,
     session_token: str,
     event: str,
-    http: httpx.AsyncClient,
+    http,
 ) -> None:
     """POST {lb_url}/internal/sessions/{id}/event with {session_token, event}."""
     url = f"{lb_url}/internal/sessions/{session_id}/event"
@@ -294,6 +292,9 @@ async def run_client(
     directly to ws_url. The LB callback events ("connected"/"disconnected") are
     sent around the websocket session so the LB doesn't reclaim the slot early.
     """
+    import httpx
+    import websockets
+
     summary: dict = {
         "client_id": client_id,
         "connected": False,
@@ -510,8 +511,6 @@ def main() -> None:
         stream=sys.stdout,
     )
 
-    if not shutil.which("say"):
-        raise SystemExit("This script requires macOS `say` (not found in PATH).")
 
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -557,11 +556,30 @@ def main() -> None:
         default="/tmp/synthetic_conversation",
         help="Top-level directory for prompt cache and per-client logs.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the resolved execution plan without checking dependencies or connecting.",
+    )
     args = parser.parse_args()
     if args.clients < 1:
         parser.error("--clients must be >= 1")
     if args.turns < 1:
         parser.error("--turns must be >= 1")
+
+    ws_url = args.url or f"ws://{args.host}:{args.port}/v1/realtime"
+    if args.dry_run:
+        print(
+            "Dry-run plan: "
+            f"url={ws_url} host={args.host} port={args.port} clients={args.clients} "
+            f"turns={args.turns} interval={args.interval} log-dir={args.log_dir}"
+        )
+        if args.lb_url:
+            print(f"Load balancer: {args.lb_url}")
+        return
+
+    if not shutil.which("say"):
+        raise SystemExit("This script requires macOS `say` (not found in PATH).")
     asyncio.run(run_all(args))
 
 
