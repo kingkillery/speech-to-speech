@@ -12,14 +12,11 @@ Usage:
 import argparse
 import json
 import logging
+import sys
 import time
 from queue import Queue
 from threading import Event
 from typing import Any, Dict, List, Optional
-
-import numpy as np
-
-from speech_to_speech.pipeline.messages import TTSInput
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,6 +49,7 @@ class BenchmarkResult:
         self.errors.append(error)
 
     def get_stats(self) -> Dict[str, Any]:
+        import numpy as np
         if not self.inference_times:
             return {
                 "handler": self.handler_name,
@@ -99,6 +97,7 @@ def benchmark_handler(
     result = BenchmarkResult(handler_name)
 
     try:
+        from speech_to_speech.pipeline.messages import TTSInput
         stop_event = Event()
         should_listen = Event()
         queue_in: Queue[Any] = Queue()
@@ -253,6 +252,7 @@ def build_benchmark_targets(args) -> List[tuple[str, str, Dict[str, Any]]]:
 
 
 def print_results(results: List[BenchmarkResult]):
+    import numpy as np
     print("\n" + "=" * 80)
     print("TTS BENCHMARK RESULTS")
     print("=" * 80)
@@ -360,17 +360,30 @@ def main():
             "as separate variants. Supported values: bf16, 4bit, 6bit, 8bit."
         ),
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate inputs and print the planned benchmark without loading models",
+    )
 
     args = parser.parse_args()
 
     if not args.handlers:
         logger.error("No handlers provided")
-        return
+        sys.exit(1)
 
     try:
         targets = build_benchmark_targets(args)
     except ValueError as e:
         logger.error(str(e))
+        sys.exit(1)
+
+    if args.dry_run:
+        print("Dry run: planned TTS benchmark")
+        print(f"  Handlers: {', '.join(result_name for result_name, _, _ in targets)}")
+        print(f"  Iterations: {args.iterations}")
+        print(f"  Output: {args.output}")
+        print(f"  Text: {args.text}")
         return
 
     results = []

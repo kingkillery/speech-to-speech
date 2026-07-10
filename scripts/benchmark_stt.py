@@ -12,16 +12,12 @@ Usage:
 import argparse
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 from queue import Queue
 from threading import Event
 from typing import Any, Dict, List, Optional
-
-import numpy as np
-import soundfile as sf
-
-from speech_to_speech.pipeline.messages import VADAudio
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,6 +48,7 @@ class BenchmarkResult:
 
     def get_stats(self) -> Dict[str, Any]:
         """Calculate statistics from benchmark results."""
+        import numpy as np
         if not self.inference_times:
             return {
                 "handler": self.handler_name,
@@ -81,8 +78,10 @@ class BenchmarkResult:
         return stats
 
 
-def load_audio(audio_path: str) -> np.ndarray:
+def load_audio(audio_path: str) -> Any:
     """Load audio file and return as numpy array."""
+    import numpy as np
+    import soundfile as sf
     logger.info(f"Loading audio from: {audio_path}")
     audio, sample_rate = sf.read(audio_path)
 
@@ -109,7 +108,7 @@ def load_audio(audio_path: str) -> np.ndarray:
 
 def benchmark_handler(
     handler_name: str,
-    audio: np.ndarray,
+    audio: Any,
     iterations: int,
     handler_kwargs: Optional[Dict[str, Any]] = None
 ) -> BenchmarkResult:
@@ -118,6 +117,7 @@ def benchmark_handler(
     result = BenchmarkResult(handler_name)
 
     try:
+        from speech_to_speech.pipeline.messages import VADAudio
         # Create queues and events for handler
         stop_event = Event()
         queue_in: Queue[Any] = Queue()
@@ -265,6 +265,7 @@ def benchmark_handler(
 
 def print_results(results: List[BenchmarkResult]):
     """Print benchmark results in a formatted table."""
+    import numpy as np
     print("\n" + "="*80)
     print("BENCHMARK RESULTS")
     print("="*80)
@@ -356,14 +357,29 @@ def main():
         default="stt_benchmark_results.json",
         help="Output JSON file for results (default: stt_benchmark_results.json)"
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate inputs and print the planned benchmark without loading audio or models",
+    )
 
     args = parser.parse_args()
 
-    # Validate audio file exists
+    if not args.handlers:
+        logger.error("No handlers provided")
+        sys.exit(1)
+
     if not Path(args.audio_file).exists():
         logger.error(f"Audio file not found: {args.audio_file}")
-        return
+        sys.exit(1)
 
+    if args.dry_run:
+        print("Dry run: planned STT benchmark")
+        print(f"  Handlers: {', '.join(args.handlers)}")
+        print(f"  Iterations: {args.iterations}")
+        print(f"  Output: {args.output}")
+        print(f"  Audio file: {args.audio_file}")
+        return
     # Load audio
     audio = load_audio(args.audio_file)
     logger.info(f"Audio loaded: {len(audio)} samples, {len(audio)/16000:.2f}s duration")
