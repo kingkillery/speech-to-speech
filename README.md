@@ -92,12 +92,12 @@ The default install covers the standard realtime path:
 
 - Parakeet TDT for STT
 - OpenAI-compatible API for the language model
-- Qwen3-TTS for speech output, using the GGML backend by default on non-macOS platforms and `mlx-audio` on Apple Silicon
+- Qwen3-TTS for speech output, using GGML on Linux, Torch/CUDA on Windows, and `mlx-audio` on Apple Silicon
 - local audio and realtime server modes
 
 macOS and non-macOS dependencies are resolved automatically via platform markers in `pyproject.toml`.
 
-### CUDA Note for Qwen3-TTS
+### CUDA Note for Qwen3-TTS on Linux
 
 On Linux, the Qwen3-TTS GGML backend comes from `faster-qwen3-tts[ggml]`. Its default `qwentts-cpp-python` wheel on PyPI targets CUDA 12.8. If your machine does not have the CUDA 12 runtime that wheel expects, install the matching wheel from the Hugging Face wheelhouse before installing `speech-to-speech`:
 
@@ -148,6 +148,27 @@ uv sync
 
 This installs the package in editable mode and makes the `speech-to-speech` CLI available.
 
+### Native Windows
+
+Native Windows uses the Torch/CUDA Qwen3-TTS backend, because the GGML wheel used on Linux is not published for Windows. Use 64-bit Python 3.10+ and an NVIDIA GPU with a current driver.
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install speech-to-speech
+$env:OPENAI_API_KEY = "sk-..."
+.\.venv\Scripts\speech-to-speech.exe --mode local
+```
+
+The Windows defaults select `--qwen3_tts_backend torch`; no extra backend flag is required. The default Responses API LLM still requires an API key. To use another OpenAI-compatible provider, set `--responses_api_base_url`, `--responses_api_api_key`, and `--model_name`.
+
+For a CPU-only Windows machine, install the optional Pocket TTS backend and select it explicitly:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install "speech-to-speech[pocket]"
+.\.venv\Scripts\speech-to-speech.exe --mode local --tts pocket --pocket_tts_device cpu
+```
+
 ## Supported Components
 
 | Component | Backend | Platforms | Install |
@@ -162,7 +183,7 @@ This installs the package in editable mode and makes the `speech-to-speech` CLI 
 | LLM | OpenAI-compatible API (`responses-api`, `chat-completions`) | hosted providers or self-hosted servers | built-in |
 | LLM | [Transformers](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending) | CUDA / CPU | built-in |
 | LLM | [mlx-lm](https://github.com/ml-explore/mlx-lm) | Apple Silicon | built-in on macOS |
-| TTS | [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) (default) | GGML / CUDA on Linux, mlx-audio on macOS | built-in |
+| TTS | [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) (default) | GGML on Linux, Torch/CUDA on Windows, mlx-audio on macOS | built-in |
 | TTS | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) | CUDA / CPU, Apple Silicon | `kokoro` on non-macOS; built-in on macOS |
 | TTS | [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) | CPU / CUDA | `pocket` |
 | TTS | [ChatTTS](https://github.com/2noise/ChatTTS) | CUDA / CPU | `chattts` |

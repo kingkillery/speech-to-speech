@@ -87,7 +87,7 @@ python s2s_pipeline.py \
 ```
 
 Behavior:
-- Uses `faster-qwen3-tts` on non-macOS platforms, defaulting to the GGML backend. Pass `--qwen3_tts_backend torch` to use the CUDA-graphs backend instead.
+- Uses `faster-qwen3-tts` on non-macOS platforms, defaulting to GGML on Linux and Torch/CUDA on Windows. Pass `--qwen3_tts_backend torch` to use the CUDA-graphs backend explicitly.
 - Uses `mlx-audio` on Apple Silicon and auto-maps `Qwen/...` model IDs to `mlx-community/...`, defaulting to the `6bit` MLX variant unless the model name already pins a suffix.
 - Supports MLX quantization overrides on Apple Silicon via `--qwen3_tts_mlx_quantization bf16|4bit|6bit|8bit`.
 - Keeps the existing voice-clone/custom-voice/voice-design handler flow intact.
@@ -96,6 +96,7 @@ Behavior:
 Install notes for Linux GGML:
 - The default PyPI `qwentts-cpp-python` wheel targets CUDA 12.8.
 - If that wheel does not match your CUDA runtime, install one of the Hugging Face wheelhouse builds before installing `speech-to-speech`.
+- The GGML `qwentts-cpp-python` wheel is not available for native Windows; Windows uses the Torch/CUDA backend instead and requires an NVIDIA GPU.
 
 ```bash
 pip install "qwentts-cpp-python==0.3.0+cu130" \
