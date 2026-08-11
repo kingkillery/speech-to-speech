@@ -117,7 +117,7 @@ pip install "qwentts-cpp-python==0.3.0+cpu" \
 pip install speech-to-speech
 ```
 
-To use the previous CUDA-graphs implementation instead of GGML, pass `--qwen3_tts_backend torch`.
+On Linux, to use the Torch CUDA-graphs implementation instead of GGML, pass `--qwen3_tts_backend torch`.
 
 ### Optional Backends
 
