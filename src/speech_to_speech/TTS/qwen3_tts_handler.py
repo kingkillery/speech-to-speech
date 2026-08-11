@@ -202,9 +202,10 @@ class Qwen3TTSHandler(BaseHandler[TTSIn, TTSOut]):
         try:
             from faster_qwen3_tts import FasterQwen3TTS
         except ImportError as e:
+            install_target = "faster-qwen3-tts" if platform == "win32" else "faster-qwen3-tts[ggml]"
             raise ImportError(
                 "faster-qwen3-tts is required for Qwen3 TTS on non-macOS platforms. "
-                "Install with: pip install 'faster-qwen3-tts[ggml]'"
+                f"Install with: pip install '{install_target}'"
             ) from e
 
         self.model = FasterQwen3TTS.from_pretrained(
