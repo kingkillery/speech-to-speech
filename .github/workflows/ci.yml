@@ -95,7 +95,8 @@ jobs:
           "${{ matrix.python }}" -m pip check
       - name: Run installed CLI smoke test
         shell: bash
+        env:
+          OPENAI_API_KEY: ""
         run: |
-          unset OPENAI_API_KEY
           # Validate the installed entry point without loading models or calling OpenAI.
           "${{ matrix.python }}" tests/install_smoke.py
