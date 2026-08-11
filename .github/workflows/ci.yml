@@ -63,15 +63,20 @@ jobs:
     name: Install smoke (${{ matrix.label }})
     needs: package
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - label: linux
             os: ubuntu-latest
+            python: .venv-smoke/bin/python
           - label: macos-arm64
             os: macos-14
+            python: .venv-smoke/bin/python
+          - label: windows
+            os: windows-latest
+            python: .venv-smoke/Scripts/python.exe
     steps:
       - uses: actions/checkout@v7.0.0
       - uses: actions/setup-python@v6.3.0
@@ -85,14 +90,12 @@ jobs:
         shell: bash
         run: |
           python -m venv .venv-smoke
-          source .venv-smoke/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install dist/speech_to_speech-*.whl
-          python -m pip check
+          "${{ matrix.python }}" -m pip install --upgrade pip
+          "${{ matrix.python }}" -m pip install dist/speech_to_speech-*.whl
+          "${{ matrix.python }}" -m pip check
       - name: Run installed CLI smoke test
         shell: bash
         run: |
-          source .venv-smoke/bin/activate
           unset OPENAI_API_KEY
           # Validate the installed entry point without loading models or calling OpenAI.
-          python tests/install_smoke.py
+          "${{ matrix.python }}" tests/install_smoke.py

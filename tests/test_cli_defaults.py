@@ -48,7 +48,8 @@ def test_release_defaults_match_responses_api_parakeet_qwen3_realtime_profile():
     assert qwen3_args.qwen3_tts_model_name == "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
     assert qwen3_args.qwen3_tts_speaker == "Aiden"
     assert qwen3_args.qwen3_tts_language == "auto"
-    assert qwen3_args.qwen3_tts_backend == "ggml"
+    expected_qwen3_backend = "torch" if sys.platform == "win32" else "ggml"
+    assert qwen3_args.qwen3_tts_backend == expected_qwen3_backend
     assert qwen3_args.qwen3_tts_non_streaming_mode is True
     assert qwen3_args.qwen3_tts_ref_audio is None
     assert qwen3_args.qwen3_tts_mlx_quantization == "6bit"

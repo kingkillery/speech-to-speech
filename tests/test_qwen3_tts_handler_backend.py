@@ -128,6 +128,38 @@ def test_setup_preserves_faster_backend_off_darwin(monkeypatch):
     }
 
 
+def test_setup_defaults_to_torch_backend_on_windows(monkeypatch):
+    recorded = {}
+
+    def _setup_mlx(self, *args, **kwargs):
+        raise AssertionError("Windows setup should not use the mlx backend")
+
+    def _setup_faster(self, model_name, dtype, attn_implementation, backend):
+        recorded["backend"] = backend
+
+    monkeypatch.setattr(qwen3_tts_module, "platform", "win32")
+    monkeypatch.setattr(Qwen3TTSHandler, "_setup_mlx", _setup_mlx)
+    monkeypatch.setattr(Qwen3TTSHandler, "_setup_faster", _setup_faster)
+    monkeypatch.setattr(Qwen3TTSHandler, "warmup", lambda self: None)
+
+    handler = object.__new__(Qwen3TTSHandler)
+    handler.setup(Event())
+
+    assert handler.backend == "faster_qwen3_tts"
+    assert handler.faster_backend == "torch"
+    assert recorded["backend"] == "torch"
+
+
+def test_setup_rejects_ggml_backend_on_windows(monkeypatch):
+    monkeypatch.setattr(qwen3_tts_module, "platform", "win32")
+    monkeypatch.setattr(Qwen3TTSHandler, "warmup", lambda self: None)
+
+    handler = object.__new__(Qwen3TTSHandler)
+
+    with pytest.raises(ValueError, match="not available on native Windows"):
+        handler.setup(Event(), backend="ggml")
+
+
 def test_setup_passes_torch_backend_override_off_darwin(monkeypatch):
     recorded = {}
 
