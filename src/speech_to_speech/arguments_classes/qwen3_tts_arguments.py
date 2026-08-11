@@ -1,5 +1,10 @@
 from dataclasses import dataclass, field
+from sys import platform
 from typing import Literal, Optional
+
+
+def _default_qwen3_tts_backend() -> Literal["ggml", "torch"]:
+    return "torch" if platform == "win32" else "ggml"
 
 
 @dataclass
@@ -29,9 +34,9 @@ class Qwen3TTSHandlerArguments:
         },
     )
     qwen3_tts_backend: Literal["ggml", "torch"] = field(
-        default="ggml",
+        default_factory=_default_qwen3_tts_backend,
         metadata={
-            "help": "faster-qwen3-tts backend on non-macOS platforms. Options: 'ggml' or 'torch'. Default is 'ggml'. On Apple Silicon, mlx-audio is selected automatically and this option is ignored."
+            "help": "faster-qwen3-tts backend on non-macOS platforms. Options: 'ggml' or 'torch'. Defaults to 'ggml' on Linux and 'torch' on Windows. On Apple Silicon, mlx-audio is selected automatically and this option is ignored."
         },
     )
     qwen3_tts_ref_audio: Optional[str] = field(

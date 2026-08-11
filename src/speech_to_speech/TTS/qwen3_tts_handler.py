@@ -2,7 +2,9 @@
 Qwen3 TTS Handler
 
 - On Apple Silicon: Uses mlx-audio with MLX-converted Qwen3-TTS models.
-- On CUDA/CPU: Uses faster-qwen3-tts for low-latency streaming.
+- On Linux: Uses faster-qwen3-tts with the GGML backend by default.
+- On Windows: Uses faster-qwen3-tts with the Torch/CUDA backend by default.
+- On other CUDA/CPU platforms: Uses faster-qwen3-tts for low-latency streaming.
 """
 
 from __future__ import annotations
@@ -82,6 +84,8 @@ class Qwen3TTSHandler(BaseHandler[TTSIn, TTSOut]):
 
     Backend selection:
       - Apple Silicon (Darwin): mlx-audio
+      - Linux: faster-qwen3-tts with GGML by default
+      - Windows: faster-qwen3-tts with Torch/CUDA by default
       - Other platforms: faster-qwen3-tts
 
     Supports three generation modes depending on the loaded model:
@@ -97,7 +101,7 @@ class Qwen3TTSHandler(BaseHandler[TTSIn, TTSOut]):
         device: str = "cuda",
         dtype: str | torch.dtype = "auto",
         attn_implementation: str = "eager",
-        backend: str = "ggml",
+        backend: str | None = None,
         ref_audio: str | Path | None = None,
         ref_text: str = DEFAULT_REF_TEXT,
         language: str = "auto",
@@ -240,10 +244,16 @@ class Qwen3TTSHandler(BaseHandler[TTSIn, TTSOut]):
         logger.info("MLX Audio Qwen3-TTS model loaded")
 
     def _normalize_faster_backend(self, backend: Any) -> str:
-        value = str(backend or "ggml").strip().lower()
+        default_backend = "torch" if platform == "win32" else "ggml"
+        value = str(backend or default_backend).strip().lower()
         if value not in VALID_FASTER_BACKENDS:
             raise ValueError(
                 f"Unsupported qwen3_tts_backend value {backend!r}. Supported values: {', '.join(VALID_FASTER_BACKENDS)}"
+            )
+        if platform == "win32" and value == "ggml":
+            raise ValueError(
+                "The Qwen3-TTS GGML backend is not available on native Windows. "
+                "Use --qwen3_tts_backend torch instead."
             )
         return value
 
